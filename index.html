@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Gemini AI App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-slate-800 rounded-xl shadow-2xl p-6 border border-slate-700">
+        <h1 class="text-2xl font-bold mb-4 text-blue-400">Gemini Assistant</h1>
+        
+        <div id="chat-window" class="h-64 overflow-y-auto mb-4 p-4 bg-slate-950 rounded-lg border border-slate-700 text-slate-300">
+            <p id="placeholder-text">Ask a question to get started...</p>
+        </div>
+
+        <div class="flex gap-2">
+            <input type="text" id="userInput" placeholder="Type your message..." 
+                class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="sendBtn" class="bg-blue-600 hover:bg-blue-500 transition-colors px-6 py-2 rounded-lg font-semibold">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const sendBtn = document.getElementById('sendBtn');
+        const userInput = document.getElementById('userInput');
+        const chatWindow = document.getElementById('chat-window');
+        const placeholder = document.getElementById('placeholder-text');
+
+        async function handleChat() {
+            const prompt = userInput.value.trim();
+            if (!prompt) return;
+
+            // Update UI
+            if (placeholder) placeholder.remove();
+            chatWindow.innerHTML += `<p class="mb-2 text-blue-300"><strong>You:</strong> ${prompt}</p>`;
+            userInput.value = '';
+
+            try {
+                // Call our SECURE Vercel backend function
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                // Show AI Response
+                chatWindow.innerHTML += `<p class="mb-4 text-slate-200"><strong>AI:</strong> ${data.text}</p>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            } catch (err) {
+                chatWindow.innerHTML += `<p class="text-red-400">Error: ${err.message}</p>`;
+            }
+        }
+
+        sendBtn.addEventListener('click', handleChat);
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChat(); });
+    </script>
+</body>
+</html>
