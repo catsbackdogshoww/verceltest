@@ -30,14 +30,44 @@
         const chatWindow = document.getElementById('chat-window');
         const placeholder = document.getElementById('placeholder-text');
 
+        // Helper function to safely append messages to the chat window
+        function appendMessage(sender, text, isError = false) {
+            const p = document.createElement('p');
+            p.classList.add('mb-2');
+
+            if (sender === 'You') {
+                p.classList.add('text-blue-300');
+                p.innerHTML = `<strong>You:</strong> `;
+            } else if (sender === 'AI') {
+                p.classList.add('text-slate-200');
+                p.innerHTML = `<strong>AI:</strong> `;
+            } else if (isError) {
+                p.classList.add('text-red-400');
+                p.innerHTML = `<strong>Error:</strong> `;
+            } else if (sender === 'Loading') {
+                p.classList.add('text-gray-500', 'italic');
+                p.id = 'loading-message'; // Add an ID to easily remove it
+            }
+            const span = document.createElement('span');
+            span.textContent = text; // Use textContent to prevent XSS
+            p.appendChild(span);
+            chatWindow.appendChild(p);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
         async function handleChat() {
             const prompt = userInput.value.trim();
             if (!prompt) return;
 
             // Update UI
             if (placeholder) placeholder.remove();
-            chatWindow.innerHTML += `<p class="mb-2 text-blue-300"><strong>You:</strong> ${prompt}</p>`;
+            appendMessage('You', prompt);
             userInput.value = '';
+
+            // Show loading state
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            appendMessage('Loading', 'AI is thinking...');
 
             try {
                 // Call our SECURE Vercel backend function
@@ -47,15 +77,25 @@
                     body: JSON.stringify({ prompt })
                 });
 
+                // Remove loading message
+                const loadingMessage = document.getElementById('loading-message');
+                if (loadingMessage) loadingMessage.remove();
+
                 const data = await response.json();
                 
                 if (data.error) throw new Error(data.error);
 
                 // Show AI Response
-                chatWindow.innerHTML += `<p class="mb-4 text-slate-200"><strong>AI:</strong> ${data.text}</p>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
+                appendMessage('AI', data.text);
             } catch (err) {
-                chatWindow.innerHTML += `<p class="text-red-400">Error: ${err.message}</p>`;
+                // Remove loading message if it's still there (e.g., network error before response)
+                const loadingMessage = document.getElementById('loading-message');
+                if (loadingMessage) loadingMessage.remove();
+                appendMessage('Error', err.message, true);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus(); // Bring focus back to the input field
             }
         }
 
